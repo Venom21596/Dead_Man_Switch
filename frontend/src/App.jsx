@@ -36,9 +36,24 @@ async function encData(data,key){const iv=crypto.getRandomValues(new Uint8Array(
 async function decData(ctHex,ivHex,key){const ct=new Uint8Array(ctHex.match(/.{2}/g).map(b=>parseInt(b,16)));const iv=new Uint8Array(ivHex.match(/.{2}/g).map(b=>parseInt(b,16)));return crypto.subtle.decrypt({name:"AES-GCM",iv},key,ct)}
 
 // ── IPFS sim ──────────────────────────────────────────────────────────────────
-const STORE={};
-const ipfsUp=d=>{const h="Qm"+Array.from(crypto.getRandomValues(new Uint8Array(20))).map(b=>b.toString(36)).join('').slice(0,44);STORE[h]=d;return h};
-const ipfsFetch=h=>STORE[h]||null;
+// ── IPFS simulation (persistent) ─────────────────────────────────────────────
+const ipfsUp = (data) => {
+
+  const hash =
+    "Qm" +
+    Array.from(crypto.getRandomValues(new Uint8Array(20)))
+      .map(b => b.toString(36))
+      .join("")
+      .slice(0, 44);
+
+  localStorage.setItem("ipfs_" + hash, data);
+
+  return hash;
+};
+
+const ipfsFetch = (hash) => {
+  return localStorage.getItem("ipfs_" + hash);
+};
 
 // ── STYLES ────────────────────────────────────────────────────────────────────
 const CSS = `
@@ -593,34 +608,99 @@ function CreatePage({contract,acct,showTx,doneTx,errTx,onDone}){
   const st=(i,k,v)=>{const t=[...form.trustees];t[i]={...t[i],[k]:v};sf("trustees",t)};
   const valid=form.trustees.filter(t=>t.a&&t.n);
 
-  const deploy=async()=>{
-    if(!contract){alert("Connect MetaMask first!");return}
-    setBusy(true);
-    try{
-      showTx("Encrypting data...","AES-256-GCM key generation");
-      const key=await genKey();const raw=await expKey(key);
-      const bytes=new TextEncoder().encode(form.data);
-      const{ct,iv}=await encData(bytes,key);
-      const n=valid.length,t=parseInt(form.threshold);
-      showTx("Splitting key...","Shamir Secret Sharing");
-      const shares=splitSecret(raw,t,n);
-      const hexShares=s2h(shares);
-      showTx("Uploading to IPFS...","Storing encrypted payload");
-      const hash=ipfsUp(JSON.stringify({ct,iv,algo:"AES-256-GCM"}));
-      showTx("Creating vault...","Blockchain transaction");
-      const tx1=await contract.createVault(hash,`ipfs://${hash}`,parseInt(form.days),t,form.beneficiary,form.desc);
-      const r1=await tx1.wait();
-      const vid=Number(r1.logs[0]?.args?.[0]??0);
-      for(let i=0;i<valid.length;i++){
-        showTx(`Adding trustee ${i+1}/${valid.length}...`,valid[i].n);
-        const tx2=await contract.addTrustee(vid,valid[i].a,valid[i].n,ethers.keccak256(ethers.toUtf8Bytes(hexShares[i])));
-        await tx2.wait();
-      }
-      doneTx("Vault created!",`Vault #${vid} is live on the blockchain`);
-      setResult({vid,hexShares,trustees:valid,hash});
-    }catch(e){console.error(e);errTx("Failed",e.reason||e.message?.slice(0,70)||"Unknown error")}
-    setBusy(false);
-  };
+  const deploy = async () => {
+  if (!contract) {
+    alert("Connect MetaMask first!");
+    return;
+  }
+
+  setBusy(true);
+
+  try {
+
+    showTx("Encrypting data...", "AES-256-GCM key generation");
+
+    const key = await genKey();
+    const raw = await expKey(key);
+
+    const bytes = new TextEncoder().encode(form.data);
+    const { ct, iv } = await encData(bytes, key);
+
+    const n = valid.length;
+    const t = parseInt(form.threshold);
+
+    showTx("Splitting key...", "Shamir Secret Sharing");
+
+    const shares = splitSecret(raw, t, n);
+    const hexShares = s2h(shares);
+
+    showTx("Uploading to IPFS...", "Storing encrypted payload");
+
+    const hash = ipfsUp(JSON.stringify({ ct, iv, algo: "AES-256-GCM" }));
+
+
+    /* ---------------- CREATE VAULT ---------------- */
+
+    showTx("Creating vault...", "Blockchain transaction");
+
+    const tx1 = await contract.createVault(
+      hash,
+      `ipfs://${hash}`,
+      parseInt(form.days),
+      t,
+      form.beneficiary,
+      form.desc
+    );
+
+    await tx1.wait();
+
+
+    /* ---------- FIXED VAULT ID EXTRACTION ---------- */
+
+    const vid = Number(await contract.vaultCount()) - 1;
+
+
+    /* ---------------- ADD TRUSTEES ---------------- */
+
+    for (let i = 0; i < valid.length; i++) {
+
+      showTx(`Adding trustee ${i + 1}/${valid.length}...`, valid[i].n);
+
+      const tx2 = await contract.addTrustee(
+        vid,
+        valid[i].a,
+        valid[i].n,
+        ethers.keccak256(ethers.toUtf8Bytes(hexShares[i]))
+      );
+
+      await tx2.wait();
+    }
+
+
+    /* ---------------- SUCCESS ---------------- */
+
+    doneTx("Vault created!", `Vault #${vid} is live on the blockchain`);
+
+    setResult({
+      vid,
+      hexShares,
+      trustees: valid,
+      hash
+    });
+
+  } catch (e) {
+
+    console.error(e);
+
+    errTx(
+      "Failed",
+      e.reason || e.message?.slice(0, 70) || "Unknown error"
+    );
+
+  }
+
+  setBusy(false);
+};
 
   if(result) return(
     <div className="page fi">

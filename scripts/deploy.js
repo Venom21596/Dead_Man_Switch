@@ -44,13 +44,23 @@ async function main() {
   console.log("Shares submitted - Vault RELEASED!");
 
   const artifactPath = "./artifacts/contracts/PosthumousRelease.sol/PosthumousRelease.json";
-  const artifact = JSON.parse(fs.readFileSync(artifactPath));
-  fs.mkdirSync("./frontend/src", { recursive: true });
-  fs.writeFileSync("./frontend/src/deployment.json", JSON.stringify({
-    contractAddress: address,
-    abi: artifact.abi
-  }, null, 2));
-  console.log("Saved deployment.json to frontend/src/");
+const artifact = JSON.parse(fs.readFileSync(artifactPath));
+
+fs.mkdirSync("./frontend/public", { recursive: true });
+
+fs.writeFileSync(
+  "./frontend/public/deployment.json",
+  JSON.stringify(
+    {
+      contractAddress: address,
+      abi: artifact.abi
+    },
+    null,
+    2
+  )
+);
+
+console.log("Saved deployment.json to frontend/public/");
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });
