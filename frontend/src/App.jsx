@@ -388,7 +388,7 @@ export default function App(){
       <header className="hdr">
         <div className="hdr-logo" onClick={()=>setPage("landing")}>
           <div className="hdr-logo-icon">🔐</div>
-          <div><div className="hdr-logo-text">Posthumous<span>Release</span></div></div>
+          <div><div className="hdr-logo-text">Ghost<span>Protocol</span></div></div>
         </div>
         <div className="hdr-right">
           {acct&&<div className="net-badge"><div className={`net-dot${chainId===31337?"":" off"}`}/>{chainId===31337?"Hardhat Local":chainId?`Chain ${chainId}`:"Wrong Network"}</div>}
@@ -430,9 +430,13 @@ function LandingPage({onStart,onRole,connect,acct}){
     <div>
       {/* Hero */}
       <div className="land-hero fi">
-        <div className="land-eyebrow">🔐 Blockchain-Powered Digital Legacy</div>
-        <h1 className="land-title">Your secrets survive.<br/><span>Even when you don't.</span></h1>
-        <p className="land-sub">PosthumousRelease lets you securely encrypt your most sensitive data — passwords, crypto seeds, final messages — and automatically release it to your loved ones only after you pass away. No single point of failure. No trust required.</p>
+        <div className="land-eyebrow">🔐Decentralized Digital Legacy Protocol</div>
+        <h1 className="land-title">
+Secure Your Digital Legacy.<br/><span>Beyond Your Lifetime.</span></h1>
+        <p className="land-sub">
+Ghost Protocol is a decentralized digital legacy system designed to securely preserve and transfer sensitive information after an individual’s lifetime. 
+Using advanced cryptographic encryption, threshold key sharing, and blockchain-based smart contracts, the protocol ensures that confidential data such as passwords, financial credentials, and private messages are securely released only to authorized beneficiaries under predefined conditions. 
+By eliminating centralized control and single points of failure, Ghost Protocol provides a transparent, secure, and trust-minimized framework for digital inheritance.</p>
         <div className="land-btns">
           <button className="land-btn-primary" onClick={onStart}>Get Started →</button>
           <button className="land-btn-ghost" onClick={()=>{onStart();onRole("guide")}}>See How It Works</button>
